@@ -1,0 +1,22 @@
+services:
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      NEXT_PUBLIC_API_URL=http://192.168.101.224:8100
+
+  backend-dev:
+    build:
+      context: ./backend
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8100
+    ports:
+      - "8101:8100"
+    volumes:
+      - ./backend:/app

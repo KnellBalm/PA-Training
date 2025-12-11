@@ -5,9 +5,10 @@
 body {
   background-color: #303446; /* Dracula Soft */
   color: #cdd6f4;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
 }
 
+/* 메인 통계 카드 */
 .stat-card {
   @apply bg-draculaCard border border-draculaBorder rounded-lg p-5 shadow-md;
 }
@@ -16,13 +17,10 @@ body {
   @apply text-draculaComment text-sm;
 }
 
-.stat-value {
-  @apply text-xl font-bold mt-1;
-}
-
+/* 홈 화면 / 메뉴 카드 공통 스타일 */
 .menu-card {
   @apply bg-draculaCurrent border border-draculaBorder p-6 rounded-xl shadow-md
-         hover:bg-draculaSelection transition cursor-pointer;
+    hover:bg-draculaSelection transition cursor-pointer;
 }
 
 .menu-icon {

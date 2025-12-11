@@ -26,12 +26,15 @@ services:
       - mysql
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
     container_name: analytics_frontend
     ports:
       - "3100:3000"     # Host 3100 → Container 3000
     depends_on:
       - backend
+    environment:
+      NEXT_PUBLIC_API_URL=http://backend:8000
 
   postgres:
     image: postgres:15

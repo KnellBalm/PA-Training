@@ -7,6 +7,12 @@ import {
   PanelGroup,
   PanelResizeHandle,
 } from "react-resizable-panels";
+import api from "@/lib/api";
+
+await api.post("/sql/run", {
+  engine,
+  query,
+});
 
 type Engine = "duckdb" | "postgres" | "mysql";
 
@@ -34,7 +40,7 @@ export default function SqlConsole() {
   // 오늘의 문제 로드 (Gemini 기반 API와 연결 예정)
   const loadProblem = async () => {
     try {
-      const res = await axios.post("http://localhost:8100/problems/generate", {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/problems/generate`, {
         difficulty: "hard",
         engine: "duckdb",
       });
@@ -46,7 +52,7 @@ export default function SqlConsole() {
 
   const loadSchema = async () => {
     try {
-      const res = await axios.get("http://localhost:8100/schema/schema");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/schema/schema`);
       setSchema(res.data.tables);
     } catch (e) {
       console.warn(e);
@@ -55,7 +61,7 @@ export default function SqlConsole() {
 
   const loadHistory = async () => {
     try {
-      const res = await axios.get("http://localhost:8100/sql/history/list");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/sql/history/list`);
       setHistory(res.data.items);
     } catch (e) {
       console.warn(e);
@@ -72,14 +78,14 @@ export default function SqlConsole() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post("http://localhost:8100/sql/run", {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/sql/run`, {
         engine,
         query: sql,
       });
       setResult(res.data);
 
       // 자동 히스토리 저장
-      await axios.post("http://localhost:8100/sql/history/add", {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/sql/history/add`, {
         engine,
         query: sql,
         problem,
@@ -128,8 +134,8 @@ export default function SqlConsole() {
       <PanelGroup direction="horizontal" className="h-[70vh]">
         {/* LEFT */}
         <Panel defaultSize={30} minSize={20}>
-          <div className="h-full rounded-lg border border-draculaBorder bg-draculaCard flex flex-col">
-            <div className="flex border-b border-draculaBorder text-xs">
+          <div className="h-full w-full rounded-lg border border-draculaBorder bg-draculaCard flex flex-col overflow-hidden">
+            <div className="flex border-b border-draculaBorder text-xs flex-shrink-0">
               <button
                 className={`px-3 py-2 ${activeLeftTab === "problem" ? "bg-draculaBg" : ""}`}
                 onClick={() => setActiveLeftTab("problem")}
@@ -150,7 +156,7 @@ export default function SqlConsole() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto p-3 text-xs">
+            <div className="flex-1 overflow-auto p-3 text-xs min-h-0">
               {activeLeftTab === "problem" && (
                 <div>
                   <div className="mb-2 flex justify-between items-center">
