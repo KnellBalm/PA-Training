@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #__next {
+  height: 100%;
+}
+
+.layout-container {
+  height: calc(100vh - 60px); /* 헤더 제외 전체 */
+}
+
+
 body {
   background-color: #303446; /* Dracula Soft */
   color: #cdd6f4;
@@ -10,8 +19,9 @@ body {
 
 /* 메인 통계 카드 */
 .stat-card {
-  @apply bg-draculaCard border border-draculaBorder rounded-lg p-5 shadow-md;
+  @apply bg-draculaCard border border-draculaBorder rounded-lg p-4 shadow-md;
 }
+
 
 .stat-title {
   @apply text-draculaComment text-sm;
@@ -38,3 +48,9 @@ body {
 .section-title {
   @apply text-2xl font-bold text-draculaCyan;
 }
+
+.shortcut-btn {
+  @apply bg-draculaCard border border-draculaBorder hover:border-draculaAccent 
+         transition-all rounded-lg p-5 block cursor-pointer;
+}
+

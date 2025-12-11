@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import axios from "axios";
+import api from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function Datasets() {
@@ -9,17 +9,17 @@ export default function Datasets() {
   const [selected, setSelected] = useState<string>("");
 
   useEffect(() => {
-    axios.get("http://localhost:8100/schema/tables").then((res) => {
+    api.get(".schema/tables").then((res) => {
       setTables(res.data.tables);
     });
-    axios.get("http://localhost:8100/schema/schema").then((res) => {
+    api.get("/schema/schema").then((res) => {
       setColumns(res.data.tables);
     });
   }, []);
 
   async function loadPreview(table: string) {
     setSelected(table);
-    const res = await axios.get(`http://localhost:8100/schema/preview?table=${table}`);
+    const res = await api.get(`/schema/preview?table=${table}`);
     setPreview(res.data.rows);
   }
 

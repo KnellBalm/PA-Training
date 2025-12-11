@@ -1,8 +1,34 @@
 services:
+  backend-dev:
+    build:
+      context: ./backend
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    container_name: analytics_backend_dev
+    ports:
+      - "8100:8000"
+    environment:
+      DUCKDB_PATH: /data/event_log.duckdb
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: analytics
+      PG_PASS: analytics123
+      PG_DB: analytics
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: analytics
+      MYSQL_PASS: analytics123
+      MYSQL_DB: analytics
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      - ./backend:/app
+      - ./generator:/app/generator   # <<< ★ 필수 추가 ★
+      - ./db:/data
+
   frontend-dev:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    container_name: analytics_frontend_dev
     command: npm run dev
     ports:
       - "3000:3000"
@@ -10,13 +36,28 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      NEXT_PUBLIC_API_URL=http://192.168.101.224:8100
+      NEXT_PUBLIC_API_URL : "http://192.168.101.224:8100"
 
-  backend-dev:
-    build:
-      context: ./backend
-    command: uvicorn main:app --reload --host 0.0.0.0 --port 8100
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: analytics123
+      POSTGRES_DB: analytics
     ports:
-      - "8101:8100"
+      - "55432:5432"
     volumes:
-      - ./backend:/app
+      - ./pgdata:/var/lib/postgresql/data
+
+  mysql:
+    image: mysql:8
+    # command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: analytics
+      MYSQL_USER: analytics
+      MYSQL_PASSWORD: analytics123
+    ports:
+      - "33306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql

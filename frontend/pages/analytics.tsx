@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import PlotlyChart from "@/components/PlotlyChart";
-import axios from "axios";
+import api from "@/lib/api";
 
 export default function Analytics() {
   const [revenueFig, setRevenueFig] = useState<any | null>(null);
@@ -10,7 +10,7 @@ export default function Analytics() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await axios.get("http://localhost:8100/dashboard/sample-revenue");
+        const res = await api.get("/dashboard/sample-revenue");
         setRevenueFig(res.data);
       } finally {
         setLoading(false);

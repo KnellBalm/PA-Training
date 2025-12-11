@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "@/lib/api";
 import Layout from "@/components/Layout";
 
 export default function Problems() {
@@ -7,7 +7,7 @@ export default function Problems() {
 
   useEffect(() => {
     const load = async () => {
-      const res = await axios.get("http://localhost:8100/problems/daily");
+      const res = await api.get("/problems/daily");
       setProblem(res.data.problem);
     };
     load();

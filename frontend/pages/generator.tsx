@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "@/lib/api";
 import Layout from "@/components/Layout";
 
 export default function Generator() {
@@ -7,13 +7,39 @@ export default function Generator() {
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
+  async function pollProgress() {
+      const timer = setInterval(async () => {
+        try {
+          const progressRes = await api.get("/generator/progress");
+          setProgress(progressRes.data.progress);
+
+          if (progressRes.data.progress >= 100) {
+            clearInterval(timer);
+            setStatus("데이터 생성 완료!");
+          }
+
+          if (progressRes.data.progress < 0) {
+            clearInterval(timer);
+            setStatus("에러 발생");
+            setError("데이터 생성 실패");
+          }
+        } catch (err) {
+          clearInterval(timer);
+          setError("프로그레스 조회 실패");
+        }
+      }, 1000);
+    }
+
   async function generate() {
     setError(null);
     setStatus("데이터 생성 중...");
     setProgress(10);
 
     try {
-      const res = await axios.post("http://localhost:8100/generator/create");
+      const res = await api.post("/generator/create");
+      if (res.data.status === "started") {
+        pollProgress();
+      }
       // 실제로는 백엔드에서 progress API를 붙이면 여기서 폴링 가능
       setProgress(100);
       setStatus("완료: " + res.data.message);

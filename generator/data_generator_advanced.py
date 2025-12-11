@@ -1,6 +1,7 @@
 import os
 import random
 from datetime import timedelta, datetime
+from typing import Callable, Dict, Iterable, List, Sequence, Tuple, Optional
 
 import duckdb
 import psycopg2
@@ -28,13 +29,10 @@ from generator.config import (
 
 from generator.utils import generate_session_id, generate_ts
 
-# progress 파일은 backend/utils/progress.py에서 관리
-try:
-    from backend.utils.progress import set_progress
-except ImportError:
-    # 백엔드 컨텍스트가 아닐 때는 더미 함수
-    def set_progress(status: str, progress: int) -> None:  # type: ignore
-        pass
+# 타입 alias
+EventRow = Tuple[int, str, str, datetime, str, str]
+DailyRow = Tuple[str, float, int]
+ProgressCallback = Callable[[int], None]
 
 
 # ----------------------------------------
@@ -42,12 +40,12 @@ except ImportError:
 # ----------------------------------------
 
 
-def generate_users():
+def generate_users() -> Dict[int, Dict[str, object]]:
     """
     일자별로 신규 유저를 생성해 전체 유저 딕셔너리를 반환.
     {user_id: {"signup_date": date, "device": ..., "channel": ...}}
     """
-    users = {}
+    users: Dict[int, Dict[str, object]] = {}
     cur_user_id = 1
     total_days = (END_DATE - START_DATE).days
 
@@ -75,15 +73,20 @@ def generate_users():
 # ----------------------------------------
 
 
-def generate_events(users):
+def generate_events(
+    users: Dict[int, Dict[str, object]],
+    progress_callback: Optional[ProgressCallback] = None,
+) -> Iterable[Tuple[List[EventRow], List[DailyRow]]]:
     """
     (events_batch, daily_batch)를 yield 하는 제너레이터.
     events_batch: [(user_id, session_id, event_name, event_time, device, channel), ...]
     daily_batch:  [(date, revenue, purchases), ...]
+
+    progress_callback: 전체 날짜 진행률(0~100)을 int로 넘기는 콜백
     """
     total_days = (END_DATE - START_DATE).days
-    events_batch = []
-    daily_batch = []
+    events_batch: List[EventRow] = []
+    daily_batch: List[DailyRow] = []
     BATCH_THRESHOLD = 200_000
 
     user_ids = list(users.keys())
@@ -92,16 +95,19 @@ def generate_events(users):
         day = START_DATE + timedelta(days=d)
         day_str = str(day)
 
-        # 프로그레스 업데이트
-        progress = int((d / max(total_days, 1)) * 100)
-        set_progress("running", progress)
+        # 프로그레스 업데이트 (일 기준)
+        if total_days > 0 and progress_callback is not None:
+            progress = int((d / total_days) * 100)
+            progress_callback(progress)
 
         # 오늘 활성 유저
         if not user_ids:
             continue
+
         k = min(len(user_ids), random.randint(3000, 12000))
         if k <= 0:
             continue
+
         active_users = random.sample(user_ids, k=k)
 
         revenue_today = 0
@@ -123,8 +129,8 @@ def generate_events(users):
                     session_id,
                     "visit",
                     generate_ts(day_str),
-                    device,
-                    channel,
+                    device,  # type: ignore[arg-type]
+                    channel,  # type: ignore[arg-type]
                 )
             )
 
@@ -136,8 +142,8 @@ def generate_events(users):
                         session_id,
                         "view_product",
                         generate_ts(day_str),
-                        device,
-                        channel,
+                        device,  # type: ignore[arg-type]
+                        channel,  # type: ignore[arg-type]
                     )
                 )
 
@@ -149,8 +155,8 @@ def generate_events(users):
                         session_id,
                         "add_to_cart",
                         generate_ts(day_str),
-                        device,
-                        channel,
+                        device,  # type: ignore[arg-type]
+                        channel,  # type: ignore[arg-type]
                     )
                 )
 
@@ -162,8 +168,8 @@ def generate_events(users):
                         session_id,
                         "checkout",
                         generate_ts(day_str),
-                        device,
-                        channel,
+                        device,  # type: ignore[arg-type]
+                        channel,  # type: ignore[arg-type]
                     )
                 )
 
@@ -179,8 +185,8 @@ def generate_events(users):
                         session_id,
                         "purchase",
                         generate_ts(day_str),
-                        device,
-                        channel,
+                        device,  # type: ignore[arg-type]
+                        channel,  # type: ignore[arg-type]
                     )
                 )
 
@@ -202,7 +208,7 @@ def generate_events(users):
 # ----------------------------------------
 
 
-def init_duckdb(conn: duckdb.DuckDBPyConnection):
+def init_duckdb(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS events (
@@ -228,7 +234,7 @@ def init_duckdb(conn: duckdb.DuckDBPyConnection):
     conn.execute("DELETE FROM daily_metrics")
 
 
-def init_postgres(cur):
+def init_postgres(cur) -> None:
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS events (
@@ -254,7 +260,7 @@ def init_postgres(cur):
     cur.execute("DELETE FROM daily_metrics")
 
 
-def init_mysql(cur):
+def init_mysql(cur) -> None:
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS events (
@@ -334,19 +340,24 @@ def register_dataset_version(generator_type: str = "advanced") -> None:
 
 
 def generate_data(
-    save_to=("duckdb", "postgres", "mysql"),
+    save_to: Sequence[str] = ("duckdb", "postgres", "mysql"),
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> None:
     """
     고급형 데이터 생성기.
     - save_to: ("duckdb", "postgres", "mysql") 중 하나 또는 여러 개 선택 가능
+    - progress_callback: 진행률(0~100)을 int로 받는 콜백 (옵션)
     """
     print("📌 사용자 생성 중...")
+    if progress_callback is not None:
+        progress_callback(0)
+
     users = generate_users()
 
     print("📌 이벤트 생성 및 저장 시작 (streaming)...")
 
     # DuckDB 준비
-    duck_con = None
+    duck_con: Optional[duckdb.DuckDBPyConnection] = None
     if "duckdb" in save_to:
         os.makedirs(os.path.dirname(DUCKDB_PATH), exist_ok=True)
         duck_con = duckdb.connect(DUCKDB_PATH)
@@ -367,7 +378,9 @@ def generate_data(
         init_mysql(my_cur)
 
     # 스트리밍으로 배치 삽입
-    for events_batch, daily_batch in generate_events(users):
+    for events_batch, daily_batch in generate_events(
+        users, progress_callback=progress_callback
+    ):
         if duck_con is not None:
             duck_con.executemany(
                 "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?)", events_batch
@@ -410,7 +423,10 @@ def generate_data(
     if "duckdb" in save_to:
         register_dataset_version(generator_type="advanced")
 
-    set_progress("completed", 100)
+    # 최종 프로그레스 100%
+    if progress_callback is not None:
+        progress_callback(100)
+
     print("✨ 고급형 데이터 생성 완료!")
 
 

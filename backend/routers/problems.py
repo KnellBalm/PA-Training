@@ -1,56 +1,37 @@
-import os
-from fastapi import APIRouter
-from backend.settings import settings
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import google.generativeai as genai
-import duckdb
+from settings import settings
 
-DB_PATH = os.getenv("DB_PATH", "db/event_log.duckdb")
 router = APIRouter()
-con = duckdb.connect(DB_PATH)
+
 class ProblemRequest(BaseModel):
     difficulty: str = "hard"
     engine: str = "duckdb"
 
+
 genai.configure(api_key=settings.GEMINI_API_KEY)
-
-
-def load_schema(engine):
-    # if engine == "duckdb":
-    #     con = duckdb.connect("db/event_log.duckdb")
-    # else:
-    #     raise NotImplementedError("Postgres/MySQL schema load later")
-
-    tables = con.execute("SELECT table_name FROM information_schema.tables").fetchall()
-    
-    schema_text = "Available tables:\n"
-    for (t,) in tables:
-        cols = con.execute(f"DESCRIBE {t}").fetchall()
-        schema_text += f"\n**{t}**:\n"
-        for col in cols:
-            schema_text += f" - {col[0]} ({col[1]})\n"
-
-    con.close()
-
-    return schema_text
 
 
 @router.post("/generate")
 async def generate_problem(req: ProblemRequest):
-    schema = load_schema(req.engine)
 
     prompt = f"""
-You are an expert SQL instructor.
-Generate **one SQL analytical problem** based on the schema below.
+    Generate a realistic SQL problem for a data analyst.
+    Difficulty: {req.difficulty}
+    Engine: {req.engine}
 
-Difficulty level: {req.difficulty}
+    Requirements:
+    - Use the dataset fields typical for event logs: user_id, event_name, event_time, value, revenue.
+    - Should require JOIN, WINDOW, GROUPING or filtering logic.
+    - Must output only the problem, no explanation.
+    """
 
-Schema:
-{schema}
+    try:
+        model = genai.GenerativeModel("gemini-2.5-pro")
+        response = model.generate_content(prompt)
 
-The problem must require real analytical thinking, similar to real-world BI/DA challenges.
-Do NOT provide the answer. Question only.
-"""
+        return {"problem": response.text}
 
-    response = genai.GenerativeModel("gemini-pro").generate_content(prompt)
-    return {"problem": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -3,7 +3,8 @@ version: "3.9"
 services:
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
     container_name: analytics_backend
     environment:
       DUCKDB_PATH: /data/event_log.duckdb
@@ -17,10 +18,11 @@ services:
       MYSQL_USER: analytics
       MYSQL_PASS: analytics123
       MYSQL_DB: analytics
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ./db:/data
     ports:
-      - "8100:8000"    # Host 8100 → Container 8000
+      - "8100:8000"
     depends_on:
       - postgres
       - mysql
@@ -28,13 +30,14 @@ services:
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL=http://backend:8000
     container_name: analytics_frontend
     ports:
-      - "3100:3000"     # Host 3100 → Container 3000
+      - "3100:3000"
     depends_on:
       - backend
-    environment:
-      NEXT_PUBLIC_API_URL=http://backend:8000
 
   postgres:
     image: postgres:15
@@ -44,20 +47,20 @@ services:
       POSTGRES_PASSWORD: analytics123
       POSTGRES_DB: analytics
     ports:
-      - "55432:5432"    # Host 55432 → Container 5432
+      - "55432:5432"
     volumes:
       - ./pgdata:/var/lib/postgresql/data
 
   mysql:
     image: mysql:8
     container_name: analytics_mysql
-    command: --default-authentication-plugin=mysql_native_password
+    # command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root123
       MYSQL_DATABASE: analytics
       MYSQL_USER: analytics
       MYSQL_PASSWORD: analytics123
     ports:
-      - "33306:3306"     # Host 33306 → Container 3306
+      - "33306:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql

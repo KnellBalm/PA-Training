@@ -1,18 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Layout from "@/components/Layout";
 import MonacoEditor from "@/components/MonacoEditor";
-import axios from "axios";
+import api from "@/lib/api";
+
 import {
   Panel,
   PanelGroup,
   PanelResizeHandle,
 } from "react-resizable-panels";
-import api from "@/lib/api";
-
-await api.post("/sql/run", {
-  engine,
-  query,
-});
 
 type Engine = "duckdb" | "postgres" | "mysql";
 
@@ -25,10 +20,15 @@ type HistoryItem = {
   correct?: boolean | null;
 };
 
+type SqlResult = {
+  columns: string[];
+  rows: Record<string, any>[];
+};
+
 export default function SqlConsole() {
   const [engine, setEngine] = useState<Engine>("duckdb");
   const [sql, setSql] = useState<string>("SELECT * FROM events LIMIT 100;");
-  const [result, setResult] = useState<any | null>(null);
+  const [result, setResult] = useState<SqlResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,12 +37,11 @@ export default function SqlConsole() {
   const [schema, setSchema] = useState<Record<string, string[]>>({});
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // 오늘의 문제 로드 (Gemini 기반 API와 연결 예정)
   const loadProblem = async () => {
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/problems/generate`, {
+      const res = await api.post('/problems/generate', {
         difficulty: "hard",
-        engine: "duckdb",
+        engine,
       });
       setProblem(res.data.problem);
     } catch (e: any) {
@@ -52,87 +51,100 @@ export default function SqlConsole() {
 
   const loadSchema = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/schema/schema`);
+      const res = await api.get('/schema/schema');
       setSchema(res.data.tables);
     } catch (e) {
-      console.warn(e);
+      console.warn("Schema load failed", e);
     }
   };
 
   const loadHistory = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/sql/history/list`);
+      const res = await api.get('/sql/history/list');
       setHistory(res.data.items);
     } catch (e) {
-      console.warn(e);
+      console.warn("History load failed", e);
     }
   };
 
   useEffect(() => {
-    loadProblem();
-    loadSchema();
-    loadHistory();
+    Promise.all([
+      loadProblem(),
+      loadSchema(),
+      loadHistory(),
+    ]);
   }, []);
 
-  const runSql = async () => {
+  const runSql = useCallback(async () => {
+    if (loading) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/sql/run`, {
+      const res = await api.post<SqlResult>('/sql/run', {
         engine,
         query: sql,
       });
       setResult(res.data);
 
-      // 자동 히스토리 저장
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/sql/history/add`, {
+      const newHistoryItemRes = await api.post<HistoryItem>('/sql/history/add', {
         engine,
         query: sql,
         problem,
       });
-
-      // 히스토리 갱신
-      loadHistory();
+      setHistory(prev => [newHistoryItemRes.data, ...prev]);
     } catch (e: any) {
       setError(e?.response?.data?.detail || e.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [engine, sql, problem, loading]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runSql();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [runSql]);
 
   return (
     <Layout>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">SQL Console</h1>
-          <p className="text-xs text-slate-300">
-            VS Code 스타일 레이아웃 · 자동완성 · 히스토리 기능이 포함된 SQL IDE입니다.
-          </p>
+      <div className="flex flex-col h-full w-full px-6 pt-4 pb-2 overflow-hidden">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-xl font-semibold">SQL Console</h1>
+            <p className="text-xs text-slate-400">
+              VS Code 스타일 실무용 SQL IDE — 자동완성·문제풀이·히스토리 포함
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-md border border-draculaBorder bg-draculaCard px-2 py-1 text-sm"
+              value={engine}
+              onChange={(e) => setEngine(e.target.value as Engine)}
+            >
+              <option value="duckdb">DuckDB</option>
+              <option value="postgres">PostgreSQL</option>
+              <option value="mysql">MySQL</option>
+            </select>
+
+            <button
+              onClick={runSql}
+              className="rounded-md bg-draculaAccent px-3 py-1 text-sm font-semibold text-black"
+              disabled={loading}
+            >
+              {loading ? "실행 중..." : "실행 (Ctrl+Enter)"}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            value={engine}
-            onChange={(e) => setEngine(e.target.value as Engine)}
-            className="rounded-md border border-draculaBorder bg-draculaCard px-2 py-1 text-sm"
-          >
-            <option value="duckdb">DuckDB</option>
-            <option value="postgres">PostgreSQL</option>
-            <option value="mysql">MySQL</option>
-          </select>
-
-          <button
-            onClick={runSql}
-            className="rounded-md bg-draculaAccent px-3 py-1 text-sm font-semibold text-black"
-            disabled={loading}
-          >
-            {loading ? "실행 중..." : "실행 (Ctrl+Enter 느낌)"}
-          </button>
-        </div>
-      </div>
-
-      <PanelGroup direction="horizontal" className="h-[70vh]">
-        {/* LEFT */}
+      <PanelGroup direction="horizontal" className="h-full">
         <Panel defaultSize={30} minSize={20}>
           <div className="h-full w-full rounded-lg border border-draculaBorder bg-draculaCard flex flex-col overflow-hidden">
             <div className="flex border-b border-draculaBorder text-xs flex-shrink-0">
@@ -220,21 +232,20 @@ export default function SqlConsole() {
 
         <PanelResizeHandle className="w-1 bg-draculaBorder" />
 
-        {/* RIGHT */}
         <Panel defaultSize={70} minSize={30}>
-          <PanelGroup direction="vertical">
+          <PanelGroup direction="vertical" className="h-full">
             <Panel defaultSize={55} minSize={30}>
               <MonacoEditor value={sql} onChange={setSql} engine={engine} onRun={runSql}/>
             </Panel>
             <PanelResizeHandle className="h-1 bg-draculaBorder" />
             <Panel defaultSize={45} minSize={20}>
-              <div className="h-full rounded-lg border border-draculaBorder bg-draculaCard p-3 text-sm">
+              <div className="h-full rounded-lg border border-draculaBorder bg-draculaCard p-3 text-sm flex flex-col overflow-hidden">
                 <h2 className="mb-2 text-sm font-semibold">결과</h2>
                 {error && (
                   <div className="mb-2 text-red-400 text-xs">에러: {error}</div>
                 )}
                 {result ? (
-                  <div className="overflow-auto">
+                  <div className="overflow-auto flex-1">
                     <table className="min-w-full border-collapse text-xs">
                       <thead>
                         <tr>
@@ -248,8 +259,9 @@ export default function SqlConsole() {
                           ))}
                         </tr>
                       </thead>
+
                       <tbody>
-                        {result.rows.map((row: any, idx: number) => (
+                        {result.rows.map((row, idx: number) => (
                           <tr key={idx}>
                             {result.columns.map((c: string) => (
                               <td
@@ -264,7 +276,7 @@ export default function SqlConsole() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
+                ) : !error && (
                   <div className="text-slate-400 text-xs">
                     아직 실행 결과가 없습니다.
                   </div>
@@ -274,6 +286,7 @@ export default function SqlConsole() {
           </PanelGroup>
         </Panel>
       </PanelGroup>
+      </div>
     </Layout>
   );
 }

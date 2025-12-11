@@ -1,3 +1,11 @@
+import sys, os
+if "settings" in sys.modules:
+    del sys.modules["settings"]
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,6 +43,7 @@ app.include_router(history.router, prefix="/sql/history", tags=["history"])
 app.include_router(problems.router, prefix="/problems", tags=["problems"])
 app.include_router(dataset.router, prefix="/datasets", tags=["datasets"])
 app.include_router(sql_eval.router, prefix="/sql/eval", tags=["sql-eval"])
+
 
 @app.get("/health")
 async def health():
