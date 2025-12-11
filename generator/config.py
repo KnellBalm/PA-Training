@@ -1,42 +1,66 @@
 import os
-from datetime import datetime
-from dotenv import load_dotenv
+from datetime import date, timedelta
+import random
 
-# .env 불러오기
-load_dotenv()
+DATASET_DIR = os.getenv("DATASET_DIR", "db")
+DATASET_META_PATH = os.path.join(DATASET_DIR, "datasets.json")
 
-# -------------------------------------------------------------------
-# ▶ 1) 기간 자동 생성에 필요한 전역 범위
-# -------------------------------------------------------------------
-GLOBAL_START_BOUND = datetime(2024, 1, 1)
-GLOBAL_END_BOUND   = datetime(2026, 12, 31)
+# ------------------------------
+# 자동 기간 설정
+# ------------------------------
+TOTAL_DAYS = random.randint(180, 220)   # 약 6~7개월
+TODAY = date.today()
+START_DATE = TODAY - timedelta(days=TOTAL_DAYS)
+END_DATE = TODAY
 
-# 학습 기간 길이 범위 (개월수 기준)
-MIN_MONTHS = 3      # 최소 3개월
-MAX_MONTHS = 9      # 최대 9개월 (자동 랜덤 생성)
+# ------------------------------
+# User 설정
+# ------------------------------
+N_USERS = 50000               # 사용자 수
+NEW_USERS_DAILY = (50, 300)   # 하루 신규 가입자 범위
 
-# -------------------------------------------------------------------
-# ▶ 2) 유저/행동 스케일 설정
-# -------------------------------------------------------------------
-DAILY_NEW_USERS_RANGE = (300, 800)
+# ------------------------------
+# 이벤트 확률
+# ------------------------------
+PROB_VISIT = 1.0
+PROB_VIEW = 0.9
+PROB_CART = 0.3
+PROB_CHECKOUT = 0.18
+PROB_PURCHASE = 0.12
 
-SEGMENT_WEIGHTS = {
-    "low_engaged": 0.5,
-    "mid_engaged": 0.3,
-    "high_engaged": 0.2,
+# ------------------------------
+# 디바이스/채널 설정
+# ------------------------------
+DEVICES = ["web", "android", "ios"]
+CHANNELS = ["organic", "ads", "email", "push"]
+
+# ------------------------------
+# 프로모션 일자 자동 생성
+# ------------------------------
+PROMOTION_DAYS = random.sample(
+    [START_DATE + timedelta(days=i) for i in range(TOTAL_DAYS)],
+    k=random.randint(8, 15)
+)
+
+PROMOTION_BOOST = 3.0  # 구매율 × 3 증가
+
+# ------------------------------
+# DB 정보
+# ------------------------------
+DUCKDB_PATH = os.getenv("DUCKDB_PATH", "db/event_log.duckdb")
+
+PG_CONFIG = {
+    "host": os.getenv("PG_HOST", "postgres"),
+    "port": int(os.getenv("PG_PORT", 5432)),
+    "user": os.getenv("PG_USER", "analytics"),
+    "password": os.getenv("PG_PASS", "analytics123"),
+    "database": os.getenv("PG_DB", "analytics"),
 }
 
-EVENTS_PER_SESSION = (3, 20)
-
-# 프로모션일: 월별 1~3일 자동 생성
-PROMOTION_DAYS_PER_MONTH = (1, 3)
-
-# -------------------------------------------------------------------
-# ▶ 3) DB 위치 설정
-# -------------------------------------------------------------------
-DB_PATH = os.getenv("DB_PATH", "db/event_log.duckdb")
-
-# -------------------------------------------------------------------
-# ▶ 4) Gemini API Key (필요 시 .env 사용)
-# -------------------------------------------------------------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", None)
+MYSQL_CONFIG = {
+    "host": os.getenv("MYSQL_HOST", "mysql"),
+    "port": int(os.getenv("MYSQL_PORT", 3306)),
+    "user": os.getenv("MYSQL_USER", "analytics"),
+    "password": os.getenv("MYSQL_PASS", "analytics123"),
+    "database": os.getenv("MYSQL_DB", "analytics"),
+}

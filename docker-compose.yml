@@ -1,32 +1,37 @@
 version: "3.9"
 
 services:
-  streamlit:
-    build: .
-    container_name: analytics_web
-    ports:
-      - "8501:8501"
-    depends_on:
-      - postgres
-      - mysql
+
+  backend:
+    build: ./backend
+    container_name: analytics_backend
     environment:
+      DUCKDB_PATH: /data/event_log.duckdb
       PG_HOST: postgres
       PG_PORT: 5432
       PG_USER: analytics
       PG_PASS: analytics123
       PG_DB: analytics
-
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_USER: analytics
       MYSQL_PASS: analytics123
       MYSQL_DB: analytics
-
     volumes:
-      - ./db:/app/db
-      - ./.env:/app/.env
-    networks:
-      - analytics-net
+      - ./db:/data
+    ports:
+      - "8100:8000"    # Host 8100 → Container 8000
+    depends_on:
+      - postgres
+      - mysql
+
+  frontend:
+    build: ./frontend
+    container_name: analytics_frontend
+    ports:
+      - "3100:3000"     # Host 3100 → Container 3000
+    depends_on:
+      - backend
 
   postgres:
     image: postgres:15
@@ -36,12 +41,9 @@ services:
       POSTGRES_PASSWORD: analytics123
       POSTGRES_DB: analytics
     ports:
-      - "5432:5432"
+      - "55432:5432"    # Host 55432 → Container 5432
     volumes:
       - ./pgdata:/var/lib/postgresql/data
-      - ./sql/init_pg.sql:/docker-entrypoint-initdb.d/init_pg.sql
-    networks:
-      - analytics-net
 
   mysql:
     image: mysql:8
@@ -53,21 +55,6 @@ services:
       MYSQL_USER: analytics
       MYSQL_PASSWORD: analytics123
     ports:
-      - "3306:3306"
+      - "33306:3306"     # Host 33306 → Container 3306
     volumes:
       - ./mysql_data:/var/lib/mysql
-      - ./sql/init_mysql.sql:/docker-entrypoint-initdb.d/init_mysql.sql
-    networks:
-      - analytics-net
-
-  adminer:
-    image: adminer
-    container_name: analytics_adminer
-    ports:
-      - 8080:8080
-    networks:
-      - analytics-net
-
-networks:
-  analytics-net:
-    driver: bridge

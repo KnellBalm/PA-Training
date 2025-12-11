@@ -1,0 +1,19 @@
+# Database volumes (must be excluded)
+pgdata/
+mysql_data/
+db/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+.env/
+
+# Editor files
+.vscode/
+.idea/
+
+# Streamlit cache
+.streamlit/

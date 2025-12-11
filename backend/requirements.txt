@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+duckdb
+psycopg2-binary
+mysql-connector-python
+plotly
+pandas
+tqdm
+google-generativeai

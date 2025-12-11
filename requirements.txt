@@ -1,8 +1,0 @@
-streamlit
-duckdb
-pandas
-numpy
-altair
-plotly
-google-generativeai
-python-dotenv
