@@ -21,6 +21,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ./backend:/app
+      # - ./backend/db:/data
       - ./generator:/app/generator   # <<< ★ 필수 추가 ★
       - ./db:/data
 

@@ -1,6 +1,6 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import settings
+from settings import settings
 
 
 class PostgresEngine:

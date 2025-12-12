@@ -84,6 +84,8 @@ export default function SqlConsole() {
         engine,
         query: sql,
       });
+      console.log("SQL Result:")
+      console.log(res);
       setResult(res.data);
 
       const newHistoryItemRes = await api.post<HistoryItem>('/sql/history/add', {

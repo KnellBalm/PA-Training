@@ -1,7 +1,7 @@
 import duckdb
-import settings
+from settings import settings
 
-
+duck_con = duckdb.connect(settings.DUCKDB_PATH, read_only=False)
 class DuckDBEngine:
     """
     DuckDB는 connection.execute() 로 바로 pandas DataFrame 반환이 가능하므로

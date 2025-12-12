@@ -1,5 +1,5 @@
 import mysql.connector
-import settings
+from settings import settings
 
 
 class MySQLEngine:

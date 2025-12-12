@@ -1,27 +1,33 @@
+import os
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
-    API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8000
+    # API
+    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
+    API_PORT: int = int(os.getenv("API_PORT", 8000))
 
-    DUCKDB_PATH: str = "/app/db/event_log.duckdb"
+    # DuckDB
+    DUCKDB_PATH: str = os.getenv("DUCKDB_PATH", "/app/db/event_log.duckdb")
 
-    PG_HOST: str = "postgres"
-    PG_PORT: int = 5432
-    PG_USER: str = "analytics"
-    PG_PASS: str = "analytics123"
-    PG_DB: str = "analytics"
+    # PostgreSQL
+    PG_HOST: str = os.getenv("PG_HOST", "postgres")
+    PG_PORT: int = int(os.getenv("PG_PORT", 5432))
+    PG_USER: str = os.getenv("PG_USER", "analytics")
+    PG_PASS: str = os.getenv("PG_PASS", "analytics123")
+    PG_DB: str = os.getenv("PG_DB", "analytics")
 
-    MYSQL_HOST: str = "mysql"
-    MYSQL_PORT: int = 3306
-    MYSQL_USER: str = "analytics"
-    MYSQL_PASS: str = "analytics123"
-    MYSQL_DB: str = "analytics"
-
-    GEMINI_API_KEY: str = ""
+    # MySQL
+    MYSQL_HOST: str = os.getenv("MYSQL_HOST", "mysql")
+    MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", 3306))
+    MYSQL_USER: str = os.getenv("MYSQL_USER", "analytics")
+    MYSQL_PASS: str = os.getenv("MYSQL_PASS", "analytics123")
+    MYSQL_DB: str = os.getenv("MYSQL_DB", "analytics")
+    
+    # Gemini API Key
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     class Config:
-        env_file = "/app/.env"
-        extra = "ignore"
-
-settings = Settings()  # ← 반드시 이 라인 있어야 함
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+settings = Settings()
