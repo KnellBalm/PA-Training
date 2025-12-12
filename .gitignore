@@ -1,4 +1,4 @@
-.log
+*.log
 .env
 __pycache__/
 *.pyc
@@ -9,3 +9,8 @@ __pycache__/
 mysql_data/
 *.swp
 pgdata/
+*.wal
+detect_settings.py
+db/
+db/event_log.duckdb
+db/event_log.duckdb.wal
